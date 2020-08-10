@@ -1,0 +1,45 @@
+{
+    "parser": "babel-eslint",
+    "env": {
+        "browser": true,
+        "es2020": true,
+        "jest": true
+    },
+    "extends": [
+        "airbnb-base",
+        "plugin:promise/recommended"
+    ],
+    "plugins": ["promise"],
+    "globals": {
+       "Atomics": "readonly",
+       "SharedArrayBuffer": "readonly"
+    },
+    "parserOptions": {
+        "ecmaVersion": 11,
+        "sourceType": "module"
+    },
+    "rules": {
+        "no-restricted-syntax": [
+            "error", 
+            "LabeledStatement",
+            "WithStatement"
+        ],
+        "import/extensions": [
+            "error",
+            "ignorePackages"
+        ],
+        "allowTernary": 0,
+	"no-alert": 0,
+	"no-plusplus": 0,
+	"import/extensions": 0,
+	"import": 0,
+        "no-restricted-globals": 0,
+	"no-return-assign": 0,
+	"class-methods-use-this": 0,
+	"no-param-reassign": 0,
+	"promise/always-return": 0
+    },
+    "settings": {
+        "import/resolver": "webpack"
+    }
+}
