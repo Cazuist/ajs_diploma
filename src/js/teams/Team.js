@@ -4,17 +4,17 @@ import PositionedCharacter from '../PositionedCharacter';
 import * as fn from '../functions';
 
 export default class Team {
-  constructor() {
+  constructor(level, charCount) {
     if (new.target.name === 'Team') {
       throw new Error('Can\'t call constructor of Team');
     }
 
-    this.level = 1;
+    this.level = level;
     this.type = 'common';
     this.alowedTypes = new.target.name === 'UserTeam'
       ? chars.userChars.filter((Char) => (new Char()).constructor.name !== 'Magician')
       : chars.aiChars;
-    this.members = generateTeam(this.alowedTypes, this.level, 2);
+    this.members = generateTeam(this.alowedTypes, this.level, charCount);
 
     this.positions = this.setPositions();
   }

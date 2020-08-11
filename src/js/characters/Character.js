@@ -15,7 +15,7 @@ export default class Character {
     this.level += 1;
     this.attack = Math.max(this.attack, Math.round(this.attack * (0.8 + this.health / 100)));
     this.defence = Math.max(this.defence, Math.round(this.defence * (0.8 + this.health / 100)));
-    this.health = Math.max(this.level + 80, 100);
+    this.health = Math.min(this.level + 80, 100);
   }
 
   getDamage(target) {

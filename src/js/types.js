@@ -1,6 +1,6 @@
 const types = {
-  user: ['bowman', 'swordsman', 'magician'],
-  ai: ['daemon', 'vampire', 'undead'],
+  UserTeam: ['bowman', 'swordsman', 'magician'],
+  AiTeam: ['daemon', 'vampire', 'undead'],
 };
 
 export default types;

@@ -7,7 +7,7 @@
     "start": "webpack-dev-server  --mode development",
     "test": "jest --coverage",
     "lint": "eslint src",
-    "build": "webpack --mode production"
+    "build": "webpack --mode development"
   },
   "repository": {
     "type": "git",

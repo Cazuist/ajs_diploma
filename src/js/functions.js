@@ -5,8 +5,8 @@ export function randomInteger(min, max) {
 
 export function getTilesList(borderSize, team) {
   const tiles = [];
-  let index1; let
-    index2;
+  let index1;
+  let index2;
 
   if (team.constructor.name === 'UserTeam') {
     [index1, index2] = [0, 1];

@@ -1,5 +1,5 @@
 import GamePlay from './GamePlay';
-import GameState from './GameState';
+// import GameState from './GameState';
 import GameStateService from './GameStateService';
 
 import UserTeam from './teams/UserTeam';
@@ -13,9 +13,9 @@ export default class GameController {
   constructor(gamePlay, stateService) {
     this.gamePlay = gamePlay;
     this.stateService = stateService;
-    this.gameState = new GameState();
+    // this.gameState = new GameState();
 
-    this.positions = [...(new UserTeam()).positions, ...(new AiTeam()).positions];
+    this.positions = [...(new UserTeam(1, 2)).positions, ...(new AiTeam(1, 2)).positions];
     this.gameLevel = 1;
     this.turn = 'user';
     this.selectedIndex = 0;
@@ -32,8 +32,8 @@ export default class GameController {
     this.gamePlay.addCellEnterListener(this.onCellEnter.bind(this));
     this.gamePlay.addCellLeaveListener(this.onCellLeave.bind(this));
     this.gamePlay.addNewGameListener(this.onNewGameClick.bind(this));
-    this.gamePlay.addLoadGameListener(this.onLoadGameClick.bind(this));
-    this.gamePlay.addSaveGameListener(this.onSaveGameClick.bind(this));
+    /* this.gamePlay.addLoadGameListener(this.onLoadGameClick.bind(this));
+    this.gamePlay.addSaveGameListener(this.onSaveGameClick.bind(this)); */
 
     // TODO: load saved stated from stateService
   }
@@ -59,8 +59,7 @@ export default class GameController {
     }
 
     if (this.selectedChar) {
-      const { position } = this.selectedChar;
-      const { character } = this.selectedChar;
+      const { position, character } = this.selectedChar;
       const cellsForMove = fn.getCellsForMove(position, character.moveRange);
       const cellsForAttack = fn.getCellsForAttack(position, character.attackRange);
 
@@ -87,6 +86,15 @@ export default class GameController {
 
             if (target.health === 0) {
               this.removeCharacter();
+
+              if (this.checkWinStatus()) {
+                if (this.turn === 'ai') {
+                  alert('You are lost!');
+                  this.blockGame();
+                } else {
+                  this.levelUp();
+                }
+              }
             }
 
             this.selectedChar = null;
@@ -120,8 +128,7 @@ export default class GameController {
     }
 
     if (this.selectedChar) {
-      const { position } = this.selectedChar;
-      const { character } = this.selectedChar;
+      const { position, character } = this.selectedChar;
       const cellsForMove = fn.getCellsForMove(position, character.moveRange);
       const cellsForAttack = fn.getCellsForAttack(position, character.attackRange);
 
@@ -164,7 +171,8 @@ export default class GameController {
       this.stateService = new GameStateService(localStorage);
       this.gamePlay.bindToDOM(document.querySelector('#game-container'));
 
-      this.positions = [...(new UserTeam()).positions, ...(new AiTeam()).positions];
+      this.positions = [...(new UserTeam(1, 2)).positions, ...(new AiTeam(1, 2)).positions];
+      this.gameLevel = 1;
       this.selectedIndex = 0;
       this.selectedChar = null;
       this.init();
@@ -182,8 +190,41 @@ export default class GameController {
   removeCharacter() {
     this.positions = this.positions.filter((char) => char.character.health !== 0);
   }
+
+  checkWinStatus() {
+    return !this.positions
+      .filter((char) => char.character.teamType !== this.turn).length;
+  }
+
+  levelUp() {
+    this.gameLevel += 1;
+    this.positions.forEach((char) => char.character.levelUp());
+    this.switchTurn();
+
+    const additionalUserChars = new UserTeam(this.gameLevel - 1,
+      Math.max(this.gameLevel - 1, 2)).positions;
+    this.positions.push(...additionalUserChars);
+
+    const UserCharsAmount = this.positions.filter((char) => char.character.teamType === 'user').length;
+    const additionalAiChars = new AiTeam(this.gameLevel, UserCharsAmount).positions;
+    this.positions.push(...additionalAiChars);
+
+    this.blockGame();
+    this.init();
+  }
+
+  blockGame() {
+    this.gamePlay.cellClickListeners = [];
+    this.gamePlay.cellEnterListeners = [];
+    this.gamePlay.cellLeaveListeners = [];
+    this.gamePlay.saveGameListeners = [];
+    this.gamePlay.newGameListeners = [];
+    this.gamePlay.loadGameListeners = [];
+  }
+
   /*
   //В разработке
+
   onLoadGameClick() {
     if (confirm('Do yo realy want to load game!\nYour progress will no save!')) {
       return 1;
@@ -202,9 +243,5 @@ export default class GameController {
 
     return score;
   }
-
-  checkWinStatus() {
-    return !this.positions
-      .filter((char) => char.character.teamType !== this.turn).length;
-  } */
+   */
 }
