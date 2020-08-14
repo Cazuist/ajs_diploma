@@ -1,7 +1,8 @@
 import GamePlay from './GamePlay';
-// import GameState from './GameState';
-import GameStateService from './GameStateService';
+import GameState from './GameState';
 
+import Character from './characters/Character';
+import { startUserChars } from './characters/charactersList';
 import UserTeam from './teams/UserTeam';
 import AiTeam from './teams/AiTeam';
 
@@ -13,204 +14,179 @@ export default class GameController {
   constructor(gamePlay, stateService) {
     this.gamePlay = gamePlay;
     this.stateService = stateService;
-    // this.gameState = new GameState();
 
-    this.positions = [...(new UserTeam(1, 2)).positions, ...(new AiTeam(1, 2)).positions];
-    this.gameLevel = 1;
-    this.turn = 'user';
-    this.selectedIndex = 0;
-    this.selectedChar = null;
-    this.currentScore = 0;
-    this.maxScore = 0;
+    this.setState();
   }
 
   init() {
-    this.gamePlay.drawUi(themes[`level${this.gameLevel}`]);
-    this.gamePlay.redrawPositions(this.positions);
+    this.gamePlay.drawUi(themes[`level${this.state.level % 4 || 4}`]);
+    this.gamePlay.redrawPositions(this.state.positions);
 
     this.gamePlay.addCellClickListener(this.onCellClick.bind(this));
     this.gamePlay.addCellEnterListener(this.onCellEnter.bind(this));
     this.gamePlay.addCellLeaveListener(this.onCellLeave.bind(this));
     this.gamePlay.addNewGameListener(this.onNewGameClick.bind(this));
-    /* this.gamePlay.addLoadGameListener(this.onLoadGameClick.bind(this));
-    this.gamePlay.addSaveGameListener(this.onSaveGameClick.bind(this)); */
+    this.gamePlay.addSaveGameListener(this.onSaveGameClick.bind(this));
+    this.gamePlay.addLoadGameListener(this.onLoadGameClick.bind(this));
+
+    this.gamePlay.levelFieldEl.innerText = this.state.level;
+    this.gamePlay.scoreFieldEl.innerText = this.state.currentScore;
+    this.gamePlay.maxScoreFieldEl.innerText = this.state.maxScore;
 
     // TODO: load saved stated from stateService
+
+    // localStorage.clear();
+  }
+
+  setState() {
+    const state = {
+      level: 1,
+      turn: 'user',
+      selectedIndex: 0,
+      selectedChar: null,
+      currentScore: 0,
+      maxScore: 0,
+      positions: [
+        ...(new UserTeam(1, 2, startUserChars)).positions,
+        ...(new AiTeam(1, 2)).positions,
+      ],
+    };
+
+    if (this.stateService.load()) {
+      this.state = this.stateService.load();
+    } else {
+      this.state = state;
+    }
+
+    return state;
   }
 
   onCellClick(index) {
     const isCharacter = !!this.gamePlay.cells[index].children.length;
-    let type;
 
     if (isCharacter) {
-      const positionedChar = this.positions
+      const positionedChar = this.state.positions
         .filter((char) => char.position === index)[0];
 
-      const char = positionedChar.character;
-      type = char.teamType;
-
-      if (this.turn === char.teamType) {
-        this.gamePlay.deselectCell(this.selectedIndex);
+      if (this.state.turn === positionedChar.character.teamType) {
+        this.gamePlay.deselectCell(this.state.selectedIndex);
         this.gamePlay.selectCell(index);
 
-        this.selectedIndex = index;
-        this.selectedChar = positionedChar;
+        this.state.selectedIndex = index;
+        this.state.selectedChar = positionedChar;
       }
     }
 
-    if (this.selectedChar) {
-      const { position, character } = this.selectedChar;
-      const cellsForMove = fn.getCellsForMove(position, character.moveRange);
-      const cellsForAttack = fn.getCellsForAttack(position, character.attackRange);
+    if (this.state.selectedChar) {
+      const posibleActions = this.getPosibileActions(this.state.selectedChar, index);
 
-      const canMove = !isCharacter && cellsForMove.includes(index);
-      const canAttack = isCharacter && type !== this.turn && cellsForAttack.includes(index);
-
-      if (canMove) {
-        this.gamePlay.setCursor(cursors.auto);
-        this.selectedChar.position = index;
-        this.gamePlay.redrawPositions(this.positions);
-        this.gamePlay.cells.forEach((cell, idx) => this.gamePlay.deselectCell(idx));
-        this.selectedChar = null;
-        this.switchTurn();
+      if (posibleActions.canMove) {
+        this.makeMove(this.state.selectedChar, index);
+        this.makeAiActions();
       }
 
-      if (canAttack) {
-        const target = this.positions.filter((char) => char.position === index)[0].character;
-        const damage = this.selectedChar.character.getDamage(target);
-
-        this.gamePlay.showDamage(index, damage)
-          .then(() => {
-            target.takeDamage(damage);
-            this.gamePlay.setCursor(cursors.auto);
-
-            if (target.health === 0) {
-              this.removeCharacter();
-
-              if (this.checkWinStatus()) {
-                if (this.turn === 'ai') {
-                  alert('You are lost!');
-                  this.blockGame();
-                } else {
-                  this.levelUp();
-                }
-              }
-            }
-
-            this.selectedChar = null;
-            this.gamePlay.redrawPositions(this.positions);
-            this.gamePlay.cells.forEach((cell, idx) => this.gamePlay.deselectCell(idx));
-            this.switchTurn();
-          }).catch((error) => alert(error.message));
+      if (posibleActions.canAttack) {
+        this.makeAttack(this.state.selectedChar, index);
       }
+    }
 
-      if (this.gamePlay.boardEl.style.cursor === 'not-allowed') {
-        alert('Attantion! Not allowed action!');
-      }
+    if (this.gamePlay.boardEl.style.cursor === 'not-allowed') {
+      GamePlay.showMessage('Attantion! Not allowed action!');
     }
   }
 
   onCellEnter(index) {
     const isCharacter = !!this.gamePlay.cells[index].children.length;
-    let type;
+    const cell = this.gamePlay.cells[index];
 
     if (isCharacter) {
-      const filteredChar = this.positions
+      const filteredChar = this.state.positions
         .filter((char) => char.position === index)[0]
         .character;
 
-      type = filteredChar.teamType;
-
       const { attack, defence, health } = filteredChar;
-      const message = fn.tagTip`${this.gameLevel}${attack}${defence}${health}`;
-
+      const message = fn.tagTip`${filteredChar.level}${attack}${defence}${health}`;
       this.gamePlay.showCellTooltip(message, index);
+
+      if (filteredChar.teamType !== this.state.turn) {
+        this.gamePlay.setCursor(cursors.notallowed);
+      } else {
+        this.gamePlay.setCursor(cursors.pointer);
+      }
     }
 
-    if (this.selectedChar) {
-      const { position, character } = this.selectedChar;
-      const cellsForMove = fn.getCellsForMove(position, character.moveRange);
-      const cellsForAttack = fn.getCellsForAttack(position, character.attackRange);
-
-      const canMove = !isCharacter && cellsForMove.includes(index);
-      const canAttack = isCharacter && type !== this.turn && cellsForAttack.includes(index);
-
-      if (canMove) {
+    if (this.state.selectedChar) {
+      const posibleActions = this.getPosibileActions(this.state.selectedChar, index);
+      if (cell.classList.contains('selected-yellow')) {
+        this.gamePlay.setCursor(cursors.auto);
+      } else if (posibleActions.canMove) {
         this.gamePlay.setCursor(cursors.pointer);
         this.gamePlay.selectCell(index, 'green');
-      } else if (canAttack) {
+      } else if (posibleActions.canAttack) {
         this.gamePlay.setCursor(cursors.crosshair);
         this.gamePlay.selectCell(index, 'red');
-      } else if (index === this.selectedIndex) {
-        this.gamePlay.setCursor(cursors.auto);
-      } else if (isCharacter && type === this.turn) {
-        this.gamePlay.setCursor(cursors.pointer);
-      } else {
+      } else if (!isCharacter) {
         this.gamePlay.setCursor(cursors.notallowed);
       }
     }
   }
 
   onCellLeave(index) {
-    const isCharacter = !!this.gamePlay.cells[index].children.length;
+    const cell = this.gamePlay.cells[index];
 
-    if (!isCharacter) {
+    this.gamePlay.hideCellTooltip(index);
+
+    if (!cell.classList.contains('selected-yellow')) {
       this.gamePlay.deselectCell(index);
-    } else {
-      this.gamePlay.hideCellTooltip(index);
+    }
 
-      if (this.selectedIndex !== index) {
-        this.gamePlay.deselectCell(index);
-      }
+    if (!this.state.selectedChar) {
+      this.gamePlay.setCursor(cursors.auto);
     }
   }
 
   onNewGameClick() {
     if (confirm('Do yo realy want to start new game!\nYour progress will no save!')) {
-      this.gamePlay = new GamePlay();
-      this.stateService = new GameStateService(localStorage);
-      this.gamePlay.bindToDOM(document.querySelector('#game-container'));
+      GameState.busyCells = [];
 
-      this.positions = [...(new UserTeam(1, 2)).positions, ...(new AiTeam(1, 2)).positions];
-      this.gameLevel = 1;
-      this.selectedIndex = 0;
-      this.selectedChar = null;
+      this.state = {
+        level: 1,
+        turn: 'user',
+        selectedIndex: 0,
+        selectedChar: null,
+        currentScore: 0,
+        maxScore: 0,
+        positions: [
+          ...(new UserTeam(1, 2, startUserChars)).positions,
+          ...(new AiTeam(1, 2)).positions,
+        ],
+      };
+      this.blockGame();
+      this.init();
+    }
+  }
+
+  onSaveGameClick() {
+    GamePlay.showMessage('Your game succesfully saved!');
+    this.state.selectedChar = null;
+    this.stateService.save(GameState.from(this.state));
+  }
+
+  onLoadGameClick() {
+    if (confirm('Do yo realy want to load game!\nYour progress will no save!')) {
+      this.blockGame();
+      this.state = this.stateService.load();
       this.init();
     }
   }
 
   switchTurn() {
-    if (this.turn === 'user') {
-      this.turn = 'ai';
+    if (this.state.turn === 'user') {
+      this.state.turn = 'ai';
     } else {
-      this.turn = 'user';
+      this.state.turn = 'user';
     }
-  }
-
-  removeCharacter() {
-    this.positions = this.positions.filter((char) => char.character.health !== 0);
-  }
-
-  checkWinStatus() {
-    return !this.positions
-      .filter((char) => char.character.teamType !== this.turn).length;
-  }
-
-  levelUp() {
-    this.gameLevel += 1;
-    this.positions.forEach((char) => char.character.levelUp());
-    this.switchTurn();
-
-    const additionalUserChars = new UserTeam(this.gameLevel - 1,
-      Math.max(this.gameLevel - 1, 2)).positions;
-    this.positions.push(...additionalUserChars);
-
-    const UserCharsAmount = this.positions.filter((char) => char.character.teamType === 'user').length;
-    const additionalAiChars = new AiTeam(this.gameLevel, UserCharsAmount).positions;
-    this.positions.push(...additionalAiChars);
-
-    this.blockGame();
-    this.init();
+    // this.gamePlay.turnFieldEl.innerText = `${this.state.turn === 'user' ? 'You' : 'Computer'}`;
   }
 
   blockGame() {
@@ -220,28 +196,153 @@ export default class GameController {
     this.gamePlay.saveGameListeners = [];
     this.gamePlay.newGameListeners = [];
     this.gamePlay.loadGameListeners = [];
+    this.gamePlay.setCursor(cursors.auto);
+    this.setMaxScore();
   }
 
-  /*
-  //В разработке
+  setEndGameEvents() {
+    this.gamePlay.addNewGameListener(this.onNewGameClick.bind(this));
+    this.gamePlay.addLoadGameListener(this.onLoadGameClick.bind(this));
+  }
 
-  onLoadGameClick() {
-    if (confirm('Do yo realy want to load game!\nYour progress will no save!')) {
-      return 1;
+  removeCharacter() {
+    this.state.positions = this.state.positions
+      .filter((char) => char.character.health !== 0);
+  }
+
+  checkWinStatus() {
+    return !this.state.positions
+      .filter((char) => char.character.teamType !== this.state.turn).length;
+  }
+
+  updateGameBoard() {
+    if (this.checkWinStatus()) {
+      if (this.state.turn === 'ai') {
+        GamePlay.showMessage(`Sorry! You lost!\nYour score is ${this.state.currentScore}`);
+        this.blockGame();
+        this.setEndGameEvents();
+        return;
+      }
+
+      GameState.updateBusyCells(this.state.positions);
+      this.levelUp();
+    } else {
+      this.switchTurn();
     }
   }
 
-  onSaveGameClick() {
-    alert('Your game succesfully saved!');
-    this.stateService.save(GameState.from(this));
+  levelUp() {
+    this.state.currentScore += this.getScore();
+    this.gamePlay.scoreFieldEl.innerText = this.state.currentScore;
+    this.blockGame();
+
+    if (this.state.level >= 4) {
+      const message = `Congratulations! You win!\nYour score is ${this.state.currentScore}.`;
+
+      GamePlay.showMessage(message);
+      this.setEndGameEvents();
+      return;
+    }
+
+    this.state.positions.forEach((char) => Character.levelUp.call(char.character));
+
+    this.state.level += 1;
+    const userCharsAmount = this.state.positions
+      .filter((char) => char.character.teamType === 'user').length;
+
+    const addCharAmount = Math.min(this.state.level - 1, 2);
+
+    const additionalUserChars = new UserTeam(this.state.level - 1, addCharAmount).positions;
+    const additionalAiChars = new AiTeam(this.state.level, userCharsAmount
+         + addCharAmount).positions;
+
+    this.state.positions.push(...additionalUserChars, ...additionalAiChars);
+    this.switchTurn();
+    this.init();
   }
 
   getScore() {
-    const score = this.positions
-      .filter((char) => char.character.teamType = 'user')
-      .reduce((cur, char1) => cur + char1.character.health, 0);
+    const score = this.state.positions
+      .filter((char) => char.character.teamType === 'user')
+      .reduce((cur, char) => cur + char.character.health, 0);
 
     return score;
   }
-   */
+
+  setMaxScore() {
+    const currentState = this.stateService.load();
+
+    this.state.maxScore = Math.max(this.state.currentScore, currentState.maxScore);
+    this.gamePlay.maxScoreFieldEl.innerText = this.state.maxScore;
+    currentState.maxScore = this.state.maxScore;
+    this.stateService.save(currentState);
+  }
+
+  makeMove(character, index) {
+    character.position = index;
+    this.gamePlay.setCursor(cursors.auto);
+    this.gamePlay.cells.forEach((cell, idx) => this.gamePlay.deselectCell(idx));
+    this.state.selectedChar = null;
+    this.gamePlay.redrawPositions(this.state.positions);
+    this.switchTurn();
+    // this.gamePlay.turnFieldEl.innerText = `${this.state.turn === 'user' ? 'You' : 'Computer'}`;
+  }
+
+  makeAttack(character, index) {
+    const target = this.state.positions
+      .filter((char) => char.position === index)[0].character;
+    const damage = Character.getDamage.call(character.character, target);
+    Character.takeDamage.call(target, damage);
+
+    this.gamePlay.setCursor(cursors.auto);
+    this.gamePlay.cellClickListeners = [];
+    this.gamePlay.cellEnterListeners = [];
+
+    this.gamePlay.showDamage(index, damage)
+      .then(() => {
+        this.gamePlay.addCellClickListener(this.onCellClick.bind(this));
+        this.gamePlay.addCellEnterListener(this.onCellEnter.bind(this));
+        this.removeCharacter();
+        this.updateGameBoard();
+      }).then(() => {
+        this.state.selectedChar = null;
+        this.gamePlay.redrawPositions(this.state.positions);
+        this.gamePlay.cells.forEach((cell, idx) => this.gamePlay.deselectCell(idx));
+      }).then(() => {
+        this.makeAiActions();
+      })
+      .catch((error) => GamePlay.showMessage(error.message));
+  }
+
+  getPosibileActions(selectedCharacter, index) {
+    const isCharacter = !!this.gamePlay.cells[index].children.length;
+    const disabledForMove = this.state.positions
+      .map((char) => char.position);
+
+    const disabledForAttack = this.state.positions
+      .filter((char) => char.character.teamType === this.state.turn)
+      .map((char) => char.position);
+
+    const { position, character } = selectedCharacter;
+
+    const cellsForMove = fn.getCellsForMove(position, character.moveRange)
+      .filter((cell) => !disabledForMove.includes(cell));
+
+    const cellsForAttack = fn.getCellsForAttack(position, character.attackRange)
+      .filter((cell) => !disabledForAttack.includes(cell) && isCharacter);
+
+    const canMove = cellsForMove.includes(index);
+    const canAttack = cellsForAttack.includes(index);
+
+    return { canMove, canAttack };
+  }
+
+  makeAiActions() {
+    /* const aiChars = this.state.positions
+      .filter((char) => char.character.teamType === 'ai'); */
+
+    this.blockGame();
+    this.switchTurn();
+    this.init();
+  }
 }

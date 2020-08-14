@@ -1,36 +1,36 @@
-import chars from '../characters/charactersList';
 import { generateTeam } from '../generators';
 import PositionedCharacter from '../PositionedCharacter';
+import GameState from '../GameState';
 import * as fn from '../functions';
 
 export default class Team {
-  constructor(level, charCount) {
+  constructor(level, charCount, allowedTypes) {
     if (new.target.name === 'Team') {
       throw new Error('Can\'t call constructor of Team');
     }
 
-    this.level = level;
-    this.type = 'common';
-    this.alowedTypes = new.target.name === 'UserTeam'
-      ? chars.userChars.filter((Char) => (new Char()).constructor.name !== 'Magician')
-      : chars.aiChars;
-    this.members = generateTeam(this.alowedTypes, this.level, charCount);
-
-    this.positions = this.setPositions();
+    this.alowedTypes = allowedTypes;
+    this.members = generateTeam(this.alowedTypes, level, charCount);
+    this.setPositions();
   }
 
   setPositions() {
     const positions = [];
-    const tileList = fn.getTilesList(8, this);
+    const tileList = fn.getTilesList.call(this, 8);
+
+    const { busyCells } = GameState;
+    const filteredTileList = busyCells
+      ? tileList.filter((cell) => !busyCells.includes(cell))
+      : tileList;
 
     for (const char of this.members) {
-      const index = fn.randomInteger(0, tileList.length - 1);
-      const cell = tileList[index];
+      const index = fn.randomInteger(0, filteredTileList.length - 1);
+      const cell = filteredTileList[index];
 
       positions.push(new PositionedCharacter(char, cell));
-      tileList.splice(index, 1);
+      filteredTileList.splice(index, 1);
     }
 
-    return positions;
+    this.positions = positions;
   }
 }

@@ -7,9 +7,8 @@ import Daemon from './Daemon';
 
 const userChars = [Swordsman, Bowman, Magician];
 const aiChars = [Undead, Vampire, Daemon];
-
-const totalChars = [...userChars, ...aiChars];
+const startUserChars = [Swordsman, Bowman];
 
 export default { userChars, aiChars };
 
-export { totalChars };
+export { startUserChars };

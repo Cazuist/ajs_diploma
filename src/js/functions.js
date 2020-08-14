@@ -3,12 +3,12 @@ export function randomInteger(min, max) {
   return Math.floor(rand);
 }
 
-export function getTilesList(borderSize, team) {
+export function getTilesList(borderSize) {
   const tiles = [];
   let index1;
   let index2;
 
-  if (team.constructor.name === 'UserTeam') {
+  if (this.constructor.name === 'UserTeam') {
     [index1, index2] = [0, 1];
   } else {
     [index1, index2] = [borderSize - 2, borderSize - 1];

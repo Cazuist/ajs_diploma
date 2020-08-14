@@ -11,18 +11,18 @@ export default class Character {
     }
   }
 
-  levelUp() {
+  static levelUp() {
     this.level += 1;
     this.attack = Math.max(this.attack, Math.round(this.attack * (0.8 + this.health / 100)));
     this.defence = Math.max(this.defence, Math.round(this.defence * (0.8 + this.health / 100)));
     this.health = Math.min(this.level + 80, 100);
   }
 
-  getDamage(target) {
+  static getDamage(target) {
     return Math.max(this.attack - target.defence, this.attack * 0.1);
   }
 
-  takeDamage(damage) {
+  static takeDamage(damage) {
     this.health -= damage;
 
     if (this.health < 0) {

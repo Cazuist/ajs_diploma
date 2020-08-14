@@ -1,11 +1,13 @@
 export default class GameState {
   static from(object) {
-    const state = {};
+    return object || null;
+  }
 
-    state.level = object.gameLevel;
-    state.positions = object.positions;
-    state.turn = object.turn;
+  static updateBusyCells(positionedCharacters) {
+    GameState.busyCells = [];
 
-    return state;
+    if (positionedCharacters) {
+      GameState.busyCells = positionedCharacters.map((char) => char.position);
+    }
   }
 }
