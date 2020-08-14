@@ -34,8 +34,6 @@ export default class GameController {
     this.gamePlay.maxScoreFieldEl.innerText = this.state.maxScore;
 
     // TODO: load saved stated from stateService
-
-    // localStorage.clear();
   }
 
   setState() {
@@ -175,7 +173,12 @@ export default class GameController {
   onLoadGameClick() {
     if (confirm('Do yo realy want to load game!\nYour progress will no save!')) {
       this.blockGame();
-      this.state = this.stateService.load();
+      if (this.stateService.load()) {
+        this.state = this.stateService.load();
+      } else {
+        GamePlay.showMessage('Can\'t find saved games!');
+      }
+
       this.init();
     }
   }
@@ -270,12 +273,14 @@ export default class GameController {
   }
 
   setMaxScore() {
-    const currentState = this.stateService.load();
+    if (this.stateService.load()) {
+      const currentState = this.stateService.load();
 
-    this.state.maxScore = Math.max(this.state.currentScore, currentState.maxScore);
-    this.gamePlay.maxScoreFieldEl.innerText = this.state.maxScore;
-    currentState.maxScore = this.state.maxScore;
-    this.stateService.save(currentState);
+      this.state.maxScore = Math.max(this.state.currentScore, currentState.maxScore);
+      this.gamePlay.maxScoreFieldEl.innerText = this.state.maxScore;
+      currentState.maxScore = this.state.maxScore;
+      this.stateService.save(currentState);
+    }
   }
 
   makeMove(character, index) {
