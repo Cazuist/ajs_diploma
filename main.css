@@ -29,7 +29,7 @@ body {
 
 .controls {
   text-align: center;
-  margin: 50px 0;
+  margin: 50px 0 25px;
 }
 
 .board-container {
@@ -252,4 +252,27 @@ body {
     font-size: 1.5rem;
   }
 }
+
+.game-state {
+  display: flex;
+  width: 450px;
+  margin: 0 auto;
+  align-items: flex-start;
+  flex-wrap: wrap;
+
+  color: white;
+  font-family: Arial;
+  font-style: italic;
+}
+
+.game-state div {
+  width: 50%;
+  margin-bottom: 10px;
+}
+
+.game-state span {  
+  color: orangered;
+  font-style: normal;
+}
+
 
