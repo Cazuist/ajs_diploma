@@ -19,7 +19,7 @@ export default class Character {
   }
 
   static getDamage(target) {
-    return Math.max(this.attack - target.defence, this.attack * 0.1);
+    return Math.round(Math.max(this.attack - target.defence, this.attack * 0.1));
   }
 
   static takeDamage(damage) {

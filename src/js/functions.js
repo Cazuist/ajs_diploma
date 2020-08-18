@@ -79,9 +79,9 @@ export function getCellsForMove(index, moveRange, boardSize = 8) {
   return moveCells.filter((cell) => cell !== index);
 }
 
-export function getCellsForAttack(index, moveRange, boardSize = 8) {
+export function getCellsForAttack(index, attackRange, boardSize = 8) {
   const attackCells = [];
-  const limits = getLimits(index, moveRange, boardSize);
+  const limits = getLimits(index, attackRange, boardSize);
 
   for (let i = limits.upperLimit; i <= limits.lowerLimit; i++) {
     for (let j = limits.leftLimit; j <= limits.rightLimit; j++) {
