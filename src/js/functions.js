@@ -3,7 +3,7 @@ export function randomInteger(min, max) {
   return Math.floor(rand);
 }
 
-export function getTilesList(borderSize) {
+export function getTilesList(borderSize = 8) {
   const tiles = [];
   let index1;
   let index2;

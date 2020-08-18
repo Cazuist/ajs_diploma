@@ -394,22 +394,27 @@ export default class GameController {
     const movers = object.filter((entity) => !!entity.freeCells.length);
     // const aiUnderAttack = object.filter((entity) => !!entity.underAttack.userAttackers.length);
 
+    if (!movers.length && !attackers.length) {
+      return;
+    }
+
     if (!attackers.length) {
       const entity = movers[fn.randomInteger(0, movers.length - 1)];
       const to = entity.freeCells[fn.randomInteger(0, entity.freeCells.length - 1)];
 
       entity.character.position = to;
-    } else {
-      const attacker = attackers[fn.randomInteger(0, attackers.length - 1)];
-      const targets = attacker.targets.userTargets;
-      const index = fn.randomInteger(0, targets.length - 1);
-
-      const target = targets[index];
-      const damage = attacker.targets.getDamages[index];
-
-      Character.takeDamage.call(target.character, damage);
-      return this.gamePlay.showDamage(target.position, damage);
+      return;
     }
+
+    const attacker = attackers[fn.randomInteger(0, attackers.length - 1)];
+    const targets = attacker.targets.userTargets;
+    const index = fn.randomInteger(0, targets.length - 1);
+
+    const target = targets[index];
+    const damage = attacker.targets.getDamages[index];
+
+    Character.takeDamage.call(target.character, damage);
+    return this.gamePlay.showDamage(target.position, damage);
   }
 
   createBattleObj() {
