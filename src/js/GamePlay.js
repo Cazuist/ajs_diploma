@@ -38,7 +38,7 @@ export default class GamePlay {
       <div class="game-state">
         <div class="current-level">Level: <span>1</span></div>
         <div class="current-score">Current score: <span>0</span></div>
-        <div class="current-turn"><!--Current turn: <span>You--></span></div>        
+        <div class="max-level">Max levels: <span>unlimited</span></div>        
         <div class="max-score">Max score: <span>0</span></div>         
       </div>
       <div class="board-container">
@@ -51,7 +51,7 @@ export default class GamePlay {
     this.loadGameEl = this.container.querySelector('[data-id=action-load]');
     this.scoreFieldEl = document.querySelector('.current-score span');
     this.maxScoreFieldEl = document.querySelector('.max-score span');
-    // this.turnFieldEl = document.querySelector('.current-turn span');
+    this.maxLevelFieldEl = document.querySelector('.max-level span');
     this.levelFieldEl = document.querySelector('.current-level span');
 
     this.newGameEl.addEventListener('click', (event) => this.onNewGameClick(event));

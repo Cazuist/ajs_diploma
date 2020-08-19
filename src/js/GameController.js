@@ -31,7 +31,8 @@ export default class GameController {
 
     this.gamePlay.levelFieldEl.innerText = this.state.level;
     this.gamePlay.scoreFieldEl.innerText = this.state.currentScore;
-    this.gamePlay.maxScoreFieldEl.innerText = this.state.maxScore;
+    this.gamePlay.maxScoreFieldEl.innerText = this.stateService.load().maxScore;
+    this.gamePlay.maxLevelFieldEl.innerText = this.state.maxLevels;
 
     window.addEventListener('beforeunload', () => this.saveCurrentState());
   }
@@ -43,7 +44,7 @@ export default class GameController {
       selectedIndex: 0,
       selectedChar: null,
       currentScore: 0,
-      maxScore: 0,
+      maxLevels: 4,
       positions: [
         ...(new UserTeam(1, 2, startUserChars)).positions,
         ...(new AiTeam(1, 2)).positions,
@@ -58,7 +59,7 @@ export default class GameController {
     }
 
     this.state = state;
-    this.stateService.save({ currentState: null, savedState: null });
+    this.stateService.save({ currentState: null, savedState: null, maxScore: 0 });
   }
 
   saveCurrentState() {
@@ -123,6 +124,8 @@ export default class GameController {
 
             if (!this.checkWinStatus()) {
               this.switchTurn();
+              this.gamePlay.addCellClickListener(this.onCellClick.bind(this));
+              this.gamePlay.addCellEnterListener(this.onCellEnter.bind(this));
               return this.makeAiActions();
             }
 
@@ -131,9 +134,6 @@ export default class GameController {
           })
           .then(() => {
             this.setAfterTurn();
-            this.gamePlay.addCellClickListener(this.onCellClick.bind(this));
-            this.gamePlay.addCellEnterListener(this.onCellEnter.bind(this));
-
             if (!this.checkWinStatus()) {
               this.switchTurn();
               return;
@@ -204,6 +204,13 @@ export default class GameController {
     if (!confirm('Do yo realy want to start new game!\nYour progress will no save!')) {
       return;
     }
+
+    let maxLevels = +prompt('How levels would you like to play?');
+
+    if (isNaN(maxLevels) || maxLevels <= 1) {
+      maxLevels = 'Infinity';
+    }
+
     GameState.busyCells = [];
     this.state = {
       level: 1,
@@ -211,7 +218,7 @@ export default class GameController {
       selectedIndex: 0,
       selectedChar: null,
       currentScore: 0,
-      maxScore: 0,
+      maxLevels,
       positions: [
         ...(new UserTeam(1, 2, startUserChars)).positions,
         ...(new AiTeam(1, 2)).positions,
@@ -281,11 +288,8 @@ export default class GameController {
     this.gamePlay.scoreFieldEl.innerText = this.state.currentScore;
     this.blockGame();
 
-    if (this.state.level >= 2) {
-      const message = `Congratulations! You win!\nYour score is ${this.state.currentScore}.`;
-
-      GamePlay.showMessage(message);
-      this.setEndGameEvents();
+    if (this.state.level >= +this.state.maxLevels) {
+      this.setWinGame();
       return;
     }
 
@@ -320,6 +324,15 @@ export default class GameController {
   removeCharacter() {
     this.state.positions = this.state.positions
       .filter((char) => char.character.health !== 0);
+  }
+
+  setWinGame() {
+    this.blockGame();
+    const message = `Congratulations! You win!\nYour score is ${this.state.currentScore}.`;
+
+    GamePlay.showMessage(message);
+    this.gamePlay.addNewGameListener(this.onNewGameClick.bind(this));
+    this.gamePlay.addLoadGameListener(this.onLoadGameClick.bind(this));
   }
 
   setLostGame() {
@@ -376,14 +389,12 @@ export default class GameController {
   }
 
   setMaxScore() {
-    if (this.stateService.load()) {
-      const currentState = this.stateService.load();
+    const loadedState = this.stateService.load();
+    const max = Math.max(this.state.currentScore, loadedState.maxScore);
 
-      this.state.maxScore = Math.max(this.state.currentScore, currentState.maxScore);
-      this.gamePlay.maxScoreFieldEl.innerText = this.state.maxScore;
-      currentState.maxScore = this.state.maxScore;
-      this.stateService.save(currentState);
-    }
+    this.gamePlay.maxScoreFieldEl.innerText = loadedState.maxScore;
+    loadedState.maxScore = max;
+    this.stateService.save(loadedState);
   }
 
   makeAiActions() {
