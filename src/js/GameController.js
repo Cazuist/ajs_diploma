@@ -51,20 +51,22 @@ export default class GameController {
     };
 
     const loadedState = this.stateService.load();
-    this.state = loadedState ? loadedState.currentState : state;
+
+    if (loadedState && loadedState.currentState) {
+      this.state = loadedState.currentState;
+      return;
+    }
+
+    this.state = state;
+    this.stateService.save({ currentState: null, savedState: null });
   }
 
   saveCurrentState() {
     const loadedState = this.stateService.load();
     this.state.selectedChar = null;
 
-    if (loadedState) {
-      loadedState.currentState = this.state;
-      this.stateService.save(loadedState);
-      return;
-    }
-
-    this.stateService.save({ currentState: this.state, savedState: null });
+    loadedState.currentState = this.state;
+    this.stateService.save(loadedState);
   }
 
   setTeams() {
@@ -225,11 +227,7 @@ export default class GameController {
     this.state.selectedChar = null;
 
     const loadedState = this.stateService.load();
-
-    if (loadedState) {
-      loadedState.savedState = this.state;
-    }
-
+    loadedState.savedState = this.state;
     this.stateService.save(loadedState);
   }
 
@@ -240,15 +238,15 @@ export default class GameController {
 
     const loadedState = this.stateService.load();
 
-    if (!loadedState) {
+    if (!loadedState.savedState) {
       GamePlay.showMessage('Can\'t find saved games!');
       return;
     }
 
     this.state = loadedState.savedState;
+    this.setTeams();
     this.blockGame();
     this.init();
-    this.setTeams();
   }
 
   makeMove(character, index) {
@@ -392,7 +390,6 @@ export default class GameController {
     const object = this.createBattleObj();
     const attackers = object.filter((entity) => !!entity.targets.userTargets.length);
     const movers = object.filter((entity) => !!entity.freeCells.length);
-    // const aiUnderAttack = object.filter((entity) => !!entity.underAttack.userAttackers.length);
 
     if (!movers.length && !attackers.length) {
       return;
